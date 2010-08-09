@@ -109,6 +109,20 @@ class BupRequestHandler(tornado.web.RequestHandler):
             hidden_shown=show_hidden,
             dir_contents=_compute_dir_contents(n, path, show_hidden))
 
+    def _list_directory_json(self,path, n):
+        """Helper to produce a json directory listing."""
+        try:
+            show_hidden = int(self.request.arguments.get('hidden', [0])[-1])
+        except ValueError, e:
+            show_hidden = False
+
+        self.set_header("Content-Type", "application/json")
+        self.write('{path:"%s",items:' % path)
+        directory_contents=_compute_dir_contents(n, show_hidden)
+        for (name, item_path, size) in directory_contents:
+            self.write('{name:"%s",path:"%s",size:"%s"}' % (name, path + item_path, size))
+        self.write('}')
+
     def _get_file(self, path, n):
         """Process a request on a file.
 
