@@ -133,6 +133,7 @@ class BupRequestHandler(tornado.web.RequestHandler):
         json += ",".join(items)
         json += ']}'
         self.write(json)
+        self.finish()
 
     def _get_file(self, path, n):
         """Process a request on a file.
