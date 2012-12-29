@@ -36,16 +36,19 @@ def cache_get(top, path):
     #log('cache: %r\n' % cache.keys())
     for i in range(max):
         pre = parts[:max-i]
-        #log('cache trying: %r\n' % pre)
+        log('cache trying: %r\n' % pre)
         c = cache.get(tuple(pre))
         if c:
             rest = parts[max-i:]
             for r in rest:
-                #log('resolving %r from %r\n' % (r, c.fullname()))
+                log('resolving %r from %r\n' % (r, c.fullname()))
                 c = c.lresolve(r)
                 key = tuple(pre + [r])
-                #log('saving: %r\n' % (key,))
-                cache[key] = c
+                log('saving: %r\n' % (key,))
+                if i > 3:  # magic number!
+                    #import ipdb
+                    #ipdb.set_trace()
+                    cache[key] = c
             break
     assert(c)
     return c
@@ -60,7 +63,7 @@ class BupFs(fuse.Fuse):
     def getattr(self, path):
         log('--getattr(%r)\n' % path)
         try:
-            node = cache_get(self.top, path)
+            node = cache_get(vfs.RefList(None), path)
             st = Stat()
             st.st_mode = node.mode
             st.st_nlink = node.nlinks()
@@ -74,7 +77,7 @@ class BupFs(fuse.Fuse):
 
     def readdir(self, path, offset):
         log('--readdir(%r)\n' % path)
-        node = cache_get(self.top, path)
+        node = cache_get(vfs.RefList(None), path)
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
         for sub in node.subs():
@@ -82,12 +85,12 @@ class BupFs(fuse.Fuse):
 
     def readlink(self, path):
         log('--readlink(%r)\n' % path)
-        node = cache_get(self.top, path)
+        node = cache_get(vfs.RefList(None), path)
         return node.readlink()
 
     def open(self, path, flags):
         log('--open(%r)\n' % path)
-        node = cache_get(self.top, path)
+        node = cache_get(vfs.RefList(None), path)
         accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
         if (flags & accmode) != os.O_RDONLY:
             return -errno.EACCES
@@ -98,7 +101,7 @@ class BupFs(fuse.Fuse):
 
     def read(self, path, size, offset):
         log('--read(%r)\n' % path)
-        n = cache_get(self.top, path)
+        n = cache_get(vfs.RefList(None), path)
         o = n.open()
         o.seek(offset)
         return o.read(size)
@@ -123,8 +126,8 @@ if len(extra) != 1:
     o.fatal("exactly one argument expected")
 
 git.check_repo_or_die()
-top = vfs.RefList(None)
-f = BupFs(top)
+#top = vfs.RefList(None)
+f = BupFs(None)
 f.fuse_args.mountpoint = extra[0]
 if opt.debug:
     f.fuse_args.add('debug')
